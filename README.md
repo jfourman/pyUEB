@@ -1,5 +1,6 @@
 # Unreal Project Backup (Incremental)
-ALPHA
+**ALPHA**
+
 This repository includes a Python script to create **fast, incremental backups** of an Unreal Engine project folder while avoiding huge, regeneratable directories.
 
 The main goal is:
@@ -12,12 +13,19 @@ The main goal is:
 ---
 
 # Disclaimer
-Always backup, that's why you're here. Have a full backup in place first.
-I hope this script works for you as is and in every case. 
-However if it doesn't or somehow your machine explodes into flames, please do not blame me.
-Take every precaution and run a --dry-run first.
+Always back up — that’s why you’re here.
 
-Improvements are always welcome!
+Have a **separate, full backup strategy in place first**.  
+I hope this script works for you as-is and in every case. However, if it doesn’t, or if your machine somehow explodes into flames, **please do not blame me**.
+
+Take every precaution:
+- Read the script
+- Understand what it excludes
+- **Always run with `--dry-run` first**
+
+Improvements and contributions are always welcome.
+
+---
 
 ## What is included?
 
@@ -31,6 +39,7 @@ By default this keeps the important source-of-truth data needed for recovery:
 - `Plugins/`
 - `*.uproject`
 - `.git/` (included by default)
+- Solution / project files (small, useful, optional)
 
 ---
 
@@ -48,12 +57,14 @@ These are typically huge and safely regeneratable:
 
 ---
 
-## Usage
+## Backup modes
 
-### Dry run (recommended first)
+This script supports **two backup modes**:
 
-Shows what would be copied without actually copying:
+### Incremental (default)
+- Copies **only files that have changed**
+- Extremely fast after the first run
+- Ideal for frequent / automated backups
 
-```powershell
-python pyUEB.py "D:\repo\UE5.7.1\[projectName]" "E:\Backups" --dry-run --verbose
-
+```text
+Mode: INCREMENTAL

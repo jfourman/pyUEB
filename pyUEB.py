@@ -20,7 +20,10 @@ Backup style:
 
 PowerShell examples (double backslash for example only):
   python backup_unreal.py "D:\\repo\\UE5.7.1\\[projectName]" "J:\\Backups" --dry-run --verbose
-  python backup_unreal.py "D:\\repo\\UE5.7.1\\[projectName]" "J:\\Backups"
+  python backup_unreal.py "D:\\repo\\UE5.7.1\\[projectName]" "J:\\Backups"  
+  python backup_unreal.py "D:\\repo\\UE5.7.1\\[projectName]" "J:\\Backups" --full   (forces refresh copies, probably never really needed)
+  python backup_unreal.py "D:\\repo\\UE5.7.1\\[projectName]" "J:\\Backups" --full --include-saved --include-build (refresh + include Saved and Build (rare))
+
 """
 
 import argparse
@@ -151,14 +154,16 @@ class Stats:
     skipped: int = 0        # files skipped (unchanged)
     excluded: int = 0       # excluded dirs + excluded files
     bytes_copied: int = 0   # total size of copied / would-copy files
+    failed: int = 0         # files that failed to copy (permissions, locks)
 
 # -----------------------------------------------------------------------------
 # Backup a project folder to: <target>/<ProjectFolderName>/
 #  - Walk the source tree
 #  - Prune excluded directories early (big speed win)
 #  - Copy only changed files
+#  - If force_copy=True, copy all eligible files (FULL backup mode)
 # -----------------------------------------------------------------------------
-def backup_project(source: Path, target: Path, excludes: list[str], dry_run: bool, verbose: bool) -> None:
+def backup_project(source: Path, target: Path, excludes: list[str], dry_run: bool, verbose: bool, force_copy: bool) -> None:
     stats = Stats()
 
     source = source.resolve()
@@ -218,7 +223,9 @@ def backup_project(source: Path, target: Path, excludes: list[str], dry_run: boo
             dst_file = target_root / Path(rel_file)
             
             # Actually copy
-            if should_copy(src_file, dst_file):
+            #  - Incremental mode: copy only if changed
+            #  - Full mode: always copy eligible files
+            if force_copy or should_copy(src_file, dst_file):
                 file_size = src_file.stat().st_size
                 stats.copied += 1
                 stats.bytes_copied += file_size
@@ -226,22 +233,33 @@ def backup_project(source: Path, target: Path, excludes: list[str], dry_run: boo
                 if dry_run:
                     print(f"[WOULD COPY] {rel_file}")
                 else:
-                    dst_file.parent.mkdir(parents=True, exist_ok=True)
-                    shutil.copy2(src_file, dst_file)
-                    if verbose:
-                        print(f"[COPIED] {rel_file}")
+                    try:
+                        dst_file.parent.mkdir(parents=True, exist_ok=True)
+                        shutil.copy2(src_file, dst_file)
+                        if verbose:
+                            print(f"[COPIED] {rel_file}")
+                    except PermissionError as e:
+                        stats.failed += 1
+                        if verbose:
+                            print(f"[FAILED] {rel_file} (permission denied)")
+                    except OSError as e:
+                        stats.failed += 1
+                        if verbose:
+                            print(f"[FAILED] {rel_file} ({e})")
             else:
                 stats.skipped += 1
                 if verbose:
                     print(f"[SKIP] {rel_file}")
 
     print("\n=== Backup Summary ===")
+    print(f"Mode:     {'FULL' if force_copy else 'INCREMENTAL'}")
     print(f"Source:   {source}")
     print(f"Target:   {target_root}")
     print(f"Scanned:  {stats.scanned}")
     print(f"Copied:   {stats.copied}")
     print(f"Skipped:  {stats.skipped}")
     print(f"Excluded: {stats.excluded}")
+    print(f"Failed:   {stats.failed}")
     print(f"Size:     {format_bytes(stats.bytes_copied)}")
     if dry_run:
         print("[DRY RUN] No files were copied.")
@@ -253,6 +271,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description="Fast incremental backup for Unreal Engine project folders.")
     ap.add_argument("source", help="Path to UE project folder (contains .uproject).")
     ap.add_argument("target", help="Directory where backups should be stored.")
+    ap.add_argument("--full", action="store_true", help="FULL backup mode: copy all eligible files (ignores incremental checks).")
     ap.add_argument("--dry-run", action="store_true", help="Print actions without copying files.")
     ap.add_argument("--verbose", action="store_true", help="Print excludes and per-file decisions.")
 
@@ -279,7 +298,8 @@ def main() -> None:
         target=Path(args.target),
         excludes=excludes,
         dry_run=args.dry_run,
-        verbose=args.verbose
+        verbose=args.verbose,
+        force_copy=args.full
     )
 
 # -----------------------------------------------------------------------------
