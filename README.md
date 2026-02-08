@@ -85,7 +85,7 @@ Even in FULL mode, excluded folders (DerivedDataCache, Intermediate, etc.) remai
 ### Dry run (strongly recommended)
 
 Shows what would be copied, without copying anything:
-
+```powershell
 python pyUEB.py "D:\repo\UE5.7.1[projectName]" "E:\Backups" --dry-run --verbose
 
 Example output:
@@ -96,17 +96,17 @@ Size: 7.95 GB
 [DRY RUN] No files were copied.
 
 ### Incremental backup (normal use)
-
+```powershell
 python pyUEB.py "D:\repo\UE5.7.1[projectName]" "E:\Backups"
 
 Fast after the first run — only changed files are copied.
 
 ### Full backup (force refresh)
-
+```powershell
 python pyUEB.py "D:\repo\UE5.7.1[projectName]" "E:\Backups" --full
 
 ### Include Saved/ or Build/ (rare)
-
+```powershell
 python pyUEB.py "D:\repo\UE5.7.1[projectName]" "E:\Backups" --include-saved
 python pyUEB.py "D:\repo\UE5.7.1[projectName]" "E:\Backups" --include-build
 
