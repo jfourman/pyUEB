@@ -19,8 +19,8 @@ Backup style:
   - Does NOT delete files from the backup target  
 
 PowerShell examples (double backslash for example only):
-  python backup_unreal.py "D:\\repo\\UE5.7.1\\EchoesOfNevermore" "J:\\Backups" --dry-run --verbose
-  python backup_unreal.py "D:\\repo\\UE5.7.1\\EchoesOfNevermore" "J:\\Backups"
+  python backup_unreal.py "D:\\repo\\UE5.7.1\\[projectName]" "J:\\Backups" --dry-run --verbose
+  python backup_unreal.py "D:\\repo\\UE5.7.1\\[projectName]" "J:\\Backups"
 """
 
 import argparse

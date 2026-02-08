@@ -55,5 +55,5 @@ These are typically huge and safely regeneratable:
 Shows what would be copied without actually copying:
 
 ```powershell
-python pyUEB.py "D:\repo\UE5.7.1\EchoesOfNevermore" "E:\Backups" --dry-run --verbose
+python pyUEB.py "D:\repo\UE5.7.1\[projectName]" "E:\Backups" --dry-run --verbose
 
