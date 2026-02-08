@@ -52,6 +52,25 @@ DEFAULT_EXCLUDES = [
 ]
 
 # -----------------------------------------------------------------------------
+# Folder size helper
+# This walks the directory tree. Only used when --size-summary is enabled,
+# and only for pruned folders 
+# -----------------------------------------------------------------------------
+def get_folder_size_bytes(folder: Path) -> int:
+    total = 0
+    try:
+        for root, _, files in os.walk(folder):
+            for name in files:
+                fp = Path(root) / name
+                try:
+                    total += fp.stat().st_size
+                except OSError:
+                    pass
+    except OSError:
+        pass
+    return total
+
+# -----------------------------------------------------------------------------
 # Human readable size formatting
 # -----------------------------------------------------------------------------
 def format_bytes(num_bytes: int) -> str:
@@ -154,6 +173,8 @@ class Stats:
     skipped: int = 0        # files skipped (unchanged)
     excluded: int = 0       # excluded dirs + excluded files
     bytes_copied: int = 0   # total size of copied / would-copy files
+    bytes_skipped: int = 0  # total size of eligible but unchanged files
+    bytes_excluded: int = 0 # total size excluded by pattern
     failed: int = 0         # files that failed to copy (permissions, locks)
 
 # -----------------------------------------------------------------------------
@@ -163,7 +184,7 @@ class Stats:
 #  - Copy only changed files
 #  - If force_copy=True, copy all eligible files (FULL backup mode)
 # -----------------------------------------------------------------------------
-def backup_project(source: Path, target: Path, excludes: list[str], dry_run: bool, verbose: bool, force_copy: bool) -> None:
+def backup_project(source: Path, target: Path, excludes: list[str], dry_run: bool, verbose: bool, force_copy: bool, size_summary: bool) -> None:
     stats = Stats()
 
     source = source.resolve()
@@ -200,6 +221,13 @@ def backup_project(source: Path, target: Path, excludes: list[str], dry_run: boo
             if match_any(rel_dir, all_excludes):
                 pruned_dirs.append(d)
                 stats.excluded += 1
+
+                # Optionally compute excluded folder size (expensive)
+                if size_summary:
+                    try:
+                        stats.bytes_excluded += get_folder_size_bytes(root_p / d)
+                    except OSError:
+                        pass
         for d in pruned_dirs:
             dirs.remove(d)
 
@@ -215,6 +243,10 @@ def backup_project(source: Path, target: Path, excludes: list[str], dry_run: boo
             # Exclude files by pattern
             if match_any(rel_file, all_excludes):
                 stats.excluded += 1
+                try:
+                    stats.bytes_excluded += src_file.stat().st_size
+                except OSError:
+                    pass
                 if verbose:
                     print(f"[EXCLUDE] {rel_file}")
                 continue
@@ -248,6 +280,10 @@ def backup_project(source: Path, target: Path, excludes: list[str], dry_run: boo
                             print(f"[FAILED] {rel_file} ({e})")
             else:
                 stats.skipped += 1
+                try:
+                    stats.bytes_skipped += src_file.stat().st_size
+                except OSError:
+                    pass
                 if verbose:
                     print(f"[SKIP] {rel_file}")
 
@@ -261,6 +297,19 @@ def backup_project(source: Path, target: Path, excludes: list[str], dry_run: boo
     print(f"Excluded: {stats.excluded}")
     print(f"Failed:   {stats.failed}")
     print(f"Size:     {format_bytes(stats.bytes_copied)}")
+
+    if size_summary:
+        total_eligible = stats.bytes_copied + stats.bytes_skipped
+        total_seen = total_eligible + stats.bytes_excluded
+        delta_eligible_not_copied = total_eligible - stats.bytes_copied
+
+        print(f"Eligible: {format_bytes(total_eligible)}")
+        print(f"Avoided:  {format_bytes(stats.bytes_excluded)}")
+        print(f"Total:    {format_bytes(total_seen)}")
+        print(f"Delta:    {format_bytes(delta_eligible_not_copied)}")
+    else:
+        print("Size summary: disabled (use --size-summary)")
+
     if dry_run:
         print("[DRY RUN] No files were copied.")
 
@@ -274,7 +323,7 @@ def main() -> None:
     ap.add_argument("--full", action="store_true", help="FULL backup mode: copy all eligible files (ignores incremental checks).")
     ap.add_argument("--dry-run", action="store_true", help="Print actions without copying files.")
     ap.add_argument("--verbose", action="store_true", help="Print excludes and per-file decisions.")
-
+    ap.add_argument("--size-summary", action="store_true", help="Compute excluded folder sizes for detailed size/delta reporting (slower).")
     # Saved/ and Build/ are excluded by default for speed. Can include them if needed.
     ap.add_argument("--include-saved", action="store_true", help="Include Saved/ (logs, autosaves, local saves). Usually large.")
     ap.add_argument("--include-build", action="store_true", help="Include Build/ (often not required for recovery).")
@@ -299,7 +348,8 @@ def main() -> None:
         excludes=excludes,
         dry_run=args.dry_run,
         verbose=args.verbose,
-        force_copy=args.full
+        force_copy=args.full,
+        size_summary=args.size_summary
     )
 
 # -----------------------------------------------------------------------------
