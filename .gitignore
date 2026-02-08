@@ -1,0 +1,6 @@
+__pycache__/
+*.pyc
+.env
+
+# Visual Studio junk (locked files)
+.vs/
