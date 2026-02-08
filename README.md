@@ -1,5 +1,5 @@
 # Unreal Project Backup (Incremental)
-
+ALPHA
 This repository includes a Python script to create **fast, incremental backups** of an Unreal Engine project folder while avoiding huge, regeneratable directories.
 
 The main goal is:
@@ -10,6 +10,14 @@ The main goal is:
 - Excludes Unreal-generated folders that can be regenerated
 
 ---
+
+# Disclaimer
+Always backup, that's why you're here. Have a full backup in place first.
+I hope this script works for you as is and in every case. 
+However if it doesn't or somehow your machine explodes into flames, please do not blame me.
+Take every precaution and run a --dry-run first.
+
+Improvements are always welcome!
 
 ## What is included?
 
